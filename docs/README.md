@@ -20,21 +20,31 @@ from aioretry import retry
 import asyncio
 
 
-def retry_policy(retries):
-    return False, retries * 0.1, retries > 3
+def example_retry_policy(retries):
+    # - It will always retry until succeeded
+    # - If fails for the first time, it will retry immediately,
+    # - If it fails again,
+    #   aioretry will perform a 100ms delay before the second retry,
+    #   200ms delay before the 3rd retry,
+    #   300ms delay before the 4th retry,
+    #   the 5th retry immediately (because the counter has been reset),
+    #   100ms delay before the 6th retry,
+    #   etc...
+    return False, retries * 0.1, retries == 3
 
 wrapped = retry(
   some_async_method,
-  retry_policy
+  example_retry_policy
 )
 
 asyncio.run(wrapped())
 ```
 
-### retry(fn, retry_policy)
+### retry(fn, retry_policy, after_failure)
 
 - **fn** `Callable[[...], Awaitable]` the function to be wrapped. The function should be an async function or normal function returns an awaitable.
 - **retry_policy** `RetryPolicy`
+- **after_failure?** `Optional[Callable[[Exception, int], None]]`
 
 Returns a wrapped function which accepts the same arguments as `fn` and returns an awaitable.
 
