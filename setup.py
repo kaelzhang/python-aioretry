@@ -16,10 +16,12 @@ def read_requirements(filename):
 
 settings = dict(
     name = 'aioretry',
-    packages = ['aioretry'],
+    packages = [
+        'aioretry'
+    ],
     version = __version__,
-    author = 'kaelzhang',
-    author_email = '',
+    author = 'Kael Zhang',
+    author_email = 'i+pypi@kael.me',
     description = ('Asyncio retry utility for Python 3.7+'),
     license = 'MIT',
     keywords = 'aioretry',

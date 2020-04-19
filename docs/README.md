@@ -16,8 +16,44 @@ $ pip install aioretry
 ## Usage
 
 ```py
-import aioretry
+from aioretry import retry
+import asyncio
+
+
+def retry_policy(retries):
+    return False, retries * 0.1, retries > 3
+
+wrapped = retry(
+  some_async_method,
+  retry_policy
+)
+
+asyncio.run(wrapped())
 ```
+
+### retry(fn, retry_policy)
+
+- **fn** `Callable[[...], Awaitable]` the function to be wrapped. The function should be an async function or normal function returns an awaitable.
+- **retry_policy** `RetryPolicy`
+
+Returns a wrapped function which accepts the same arguments as `fn` and returns an awaitable.
+
+### RetryPolicy
+
+```py
+RetryPolicy = Callable[[int], Tuple[bool, Union[float, int], bool]]
+```
+
+Retry policy is used to determine what to do next after the `fn` fails to do some certain thing.
+
+```py
+abandon, delay, reset = retry_policy(retries)
+```
+
+- `retries` is the counter number of how many times aioretry has retried to perform the function `fn`. If `fn` fails for the first time, then `retries` will be `0`
+- If `abandon` is `True`, then aioretry will give up reconnecting, otherwise:
+  - aioretry will `asyncio.sleep(delay)` before the next retry.
+  - If `reset` is `True`, aioretry will reset the retry counter to `0`
 
 ## License
 
