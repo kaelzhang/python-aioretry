@@ -32,21 +32,18 @@ def example_retry_policy(retries):
     #   etc...
     return False, retries * 0.1, retries == 3
 
-wrapped = retry(
-  some_async_method,
-  example_retry_policy
-)
+wrapped = retry(example_retry_policy)(some_async_method)
 
 asyncio.run(wrapped())
 ```
 
-### retry(fn, retry_policy, after_failure)
+### retry(retry_policy, after_failure)(fn)
 
 - **fn** `Callable[[...], Awaitable]` the function to be wrapped. The function should be an async function or normal function returns an awaitable.
 - **retry_policy** `RetryPolicy`
 - **after_failure?** `Optional[Callable[[Exception, int], None]]`
 
-Returns a wrapped function which accepts the same arguments as `fn` and returns an awaitable.
+Returns a wrapped function which accepts the same arguments as `fn` and returns an `Awaitable`.
 
 ### RetryPolicy
 
