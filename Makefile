@@ -23,4 +23,4 @@ publish:
 	make build
 	twine upload --config-file ~/.pypirc -r pypi dist/*
 
-.PHONY: test
+.PHONY: test build
