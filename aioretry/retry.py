@@ -4,8 +4,7 @@ from typing import (
     Callable,
     Awaitable,
     Optional,
-    TypeVar,
-    # overload
+    TypeVar
 )
 
 import inspect
