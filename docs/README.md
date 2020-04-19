@@ -20,47 +20,54 @@ from aioretry import retry
 import asyncio
 
 
-def example_retry_policy(retries):
+def example_retry_policy(fails):
     # - It will always retry until succeeded
     # - If fails for the first time, it will retry immediately,
     # - If it fails again,
     #   aioretry will perform a 100ms delay before the second retry,
     #   200ms delay before the 3rd retry,
-    #   300ms delay before the 4th retry,
-    #   the 5th retry immediately (because the counter has been reset),
-    #   100ms delay before the 6th retry,
+    #   the 4th retry immediately,
+    #   100ms delay before the 5th retry,
     #   etc...
-    return False, retries * 0.1, retries == 3
+    return False, (fails - 1) % 3 * 0.1
 
-wrapped = retry(example_retry_policy)(some_async_method)
 
-asyncio.run(wrapped())
+@retry(example_retry_policy)
+async def connect_to_server():
+    # connec to server
+    ...
+
+asyncio.run(connect_to_server())
+```
+
+### Use as class instance method decorator
+
+```py
+class
 ```
 
 ### retry(retry_policy, after_failure)(fn)
 
 - **fn** `Callable[[...], Awaitable]` the function to be wrapped. The function should be an async function or normal function returns an awaitable.
-- **retry_policy** `RetryPolicy`
-- **after_failure?** `Optional[Callable[[Exception, int], None]]`
+- **retry_policy** `Union[str, RetryPolicy]`
+- **after_failure?** `Optional[Union[str, Callable[[Exception, int], Optional[Awaitable]]]]` IF specified, `after_failure` is called after each failture of `fn` and before the corresponding retry. If the retry is abandoned, `after_failture` will not be executed.
 
 Returns a wrapped function which accepts the same arguments as `fn` and returns an `Awaitable`.
 
 ### RetryPolicy
 
 ```py
-RetryPolicy = Callable[[int], Tuple[bool, Union[float, int], bool]]
+RetryPolicy = Callable[[int], Tuple[bool, Union[float, int]]]
 ```
 
 Retry policy is used to determine what to do next after the `fn` fails to do some certain thing.
 
 ```py
-abandon, delay, reset = retry_policy(retries)
+abandon, delay = retry_policy(retries)
 ```
 
-- `retries` is the counter number of how many times aioretry has retried to perform the function `fn`. If `fn` fails for the first time, then `retries` will be `0`
-- If `abandon` is `True`, then aioretry will give up reconnecting, otherwise:
-  - aioretry will `asyncio.sleep(delay)` before the next retry.
-  - If `reset` is `True`, aioretry will reset the retry counter to `0`
+- `fails` is the counter number of how many times function `fn` performs as a failure. If `fn` fails for the first time, then `fails` will be `1`
+- If `abandon` is `True`, then aioretry will give up reconnecting, otherwise aioretry will `asyncio.sleep(delay)` before the next retry.
 
 ## License
 

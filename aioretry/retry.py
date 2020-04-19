@@ -12,10 +12,10 @@ import inspect
 import asyncio
 
 
-RetryPolicyStrategy = Tuple[bool, Union[int, float], bool]
+RetryPolicyStrategy = Tuple[bool, Union[int, float]]
 
 FunctionRetryPolicy = Callable[[int], RetryPolicyStrategy]
-FunctionExceptionCallback = Callable[[Exception, int], None]
+FunctionExceptionCallback = Callable[[Exception, int], Optional[Awaitable]]
 
 RetryPolicy = Union[FunctionRetryPolicy, str]
 ExceptionCallback = Union[FunctionExceptionCallback, str]
@@ -33,7 +33,7 @@ async def await_coro(coro):
 
 
 async def perform(
-    retries: int,
+    fails: int,
     fn: TargetFunction,
     retry_policy: FunctionRetryPolicy,
     after_failure: Optional[FunctionExceptionCallback],
@@ -43,26 +43,26 @@ async def perform(
     try:
         return await fn(*args, **kwargs)
     except Exception as e:
-        abandon, delay, reset = retry_policy(retries)
+        fails += 1
+        abandon, delay = retry_policy(fails)
 
         if abandon:
             raise e
 
         if after_failure is not None:
             try:
-                await await_coro(after_failure(e, retries))
-            except Exception:
-                pass
+                await await_coro(after_failure(e, fails))
+            except Exception as e:
+                raise RuntimeError(
+                    f'[aioretry] after_failure failed, reason: {e}'
+                )
 
         # `delay` could be 0
         if delay:
             await asyncio.sleep(delay)
 
-        if reset:
-            retries = 0
-
         return await perform(
-            retries,
+            fails,
             fn,
             retry_policy,
             after_failure,
@@ -89,7 +89,7 @@ def get_method(
 
     if len(args) == 0:
         raise RuntimeError(
-            f'[aioretry] decorator should be used for instance method if {name} `"{target}"` as a str'
+            f'[aioretry] decorator should be used for instance method if {name} as a str `"{target}"` '
         )
 
     self = args[0]
@@ -103,7 +103,7 @@ def retry(
 ) -> Callable[[TargetFunction], TargetFunction]:
     def wrapper(fn: TargetFunction) -> TargetFunction:
         async def wrapped(*args, **kwargs):
-            return perform(
+            return await perform(
                 0,
                 fn,
                 get_method(
