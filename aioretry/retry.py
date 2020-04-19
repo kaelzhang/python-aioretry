@@ -13,15 +13,15 @@ import asyncio
 
 RetryPolicyStrategy = Tuple[bool, Union[int, float]]
 
-FunctionRetryPolicy = Callable[[int], RetryPolicyStrategy]
-FunctionExceptionCallback = Callable[[Exception, int], Optional[Awaitable]]
+RetryPolicy = Callable[[int], RetryPolicyStrategy]
+AfterFailure = Callable[[Exception, int], Optional[Awaitable]]
 
-RetryPolicy = Union[FunctionRetryPolicy, str]
-ExceptionCallback = Union[FunctionExceptionCallback, str]
+ParamRetryPolicy = Union[RetryPolicy, str]
+ParamAfterFailure = Union[AfterFailure, str]
 
 TargetFunction = Callable[..., Awaitable]
 
-T = TypeVar('T', FunctionRetryPolicy, FunctionExceptionCallback)
+T = TypeVar('T', RetryPolicy, AfterFailure)
 
 
 async def await_coro(coro):
@@ -34,8 +34,8 @@ async def await_coro(coro):
 async def perform(
     fails: int,
     fn: TargetFunction,
-    retry_policy: FunctionRetryPolicy,
-    after_failure: Optional[FunctionExceptionCallback],
+    retry_policy: RetryPolicy,
+    after_failure: Optional[AfterFailure],
     *args,
     **kwargs
 ):
@@ -57,7 +57,7 @@ async def perform(
                 )
 
         # `delay` could be 0
-        if delay:
+        if delay > 0:
             await asyncio.sleep(delay)
 
         return await perform(
@@ -69,14 +69,6 @@ async def perform(
             **kwargs
         )
 
-
-# @overload
-# def get_method(
-#     target: str,
-#     args: Tuple,
-#     name: str
-# ) -> T:
-#     ...
 
 def get_method(
     target: Union[T, str],
@@ -97,8 +89,8 @@ def get_method(
 
 
 def retry(
-    retry_policy: RetryPolicy,
-    after_failure: Optional[ExceptionCallback] = None
+    retry_policy: ParamRetryPolicy,
+    after_failure: Optional[ParamAfterFailure] = None
 ) -> Callable[[TargetFunction], TargetFunction]:
     def wrapper(fn: TargetFunction) -> TargetFunction:
         async def wrapped(*args, **kwargs):
