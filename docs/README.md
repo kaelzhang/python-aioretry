@@ -16,11 +16,15 @@ $ pip install aioretry
 ## Usage
 
 ```py
-from aioretry import retry
 import asyncio
+from typing import (
+  Tuple
+)
+
+from aioretry import retry
 
 
-def example_retry_policy(fails):
+def retry_policy(fails: int) -> Tuple[bool, float]:
     # - It will always retry until succeeded
     # - If fails for the first time, it will retry immediately,
     # - If it fails again,
@@ -32,7 +36,7 @@ def example_retry_policy(fails):
     return False, (fails - 1) % 3 * 0.1
 
 
-@retry(example_retry_policy)
+@retry(retry_policy)
 async def connect_to_server():
     # connec to server
     ...
@@ -42,9 +46,62 @@ asyncio.run(connect_to_server())
 
 ### Use as class instance method decorator
 
+We could also use `retry` as a decorator for instance method
+
 ```py
-class
+class Client:
+    @retry(retry_policy)
+    async def connect(self):
+        await self._connect()
+
+asyncio.run(Client().connect())
 ```
+
+### Use instance method as retry policy
+
+`retry_policy` could be the method name of the class if `retry` is used as a decorator for instance method.
+
+```py
+class ClientWithConfigurableRetryPolicy(Client):
+    def __init__(self, max_retries: int = 3):
+        self._max_retries = max_retries
+
+    def _retry_policy(self, fails: int) -> Tuple[bool, float]:
+        return fails > self._max_retries, fails * 0.1
+
+    # Then aioretry will use `self._retry_policy` as the retry policy.
+    # And by using a str as the parameter `retry_policy`,
+    # the decorator must be used for instance methods
+    @retry('_retry_policy')
+    async def connect(self):
+        await self._connect()
+
+asyncio.run(ClientWithConfigurableRetryPolicy(10).connect())
+```
+
+### Register an `after_failure` callback
+
+We could also register an `after_failure` callback which will be executed after every failure of the target function if the corresponding retry is not abandoned.
+
+```py
+class ClientTrackableFailures(ClientWithConfigurableRetryPolicy):
+    # `after_failure` could either be a sync function or an async function
+    async def _on_failure(self, error: Exception, fails: int) -> None:
+        await self._send_failure_log(error, fails)
+
+    @retry(
+      retry_policy='_retry_policy',
+
+      # Similar to `retry_policy`,
+      # `after_failure` could either be a Callable or a str
+      after_failure='_on_failture'
+    )
+    async def connect(self):
+        await self._connect()
+```
+
+
+## APIs
 
 ### retry(retry_policy, after_failure)(fn)
 
