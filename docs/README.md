@@ -107,7 +107,7 @@ class ClientTrackableFailures(ClientWithConfigurableRetryPolicy):
 
 - **fn** `Callable[[...], Awaitable]` the function to be wrapped. The function should be an async function or normal function returns an awaitable.
 - **retry_policy** `Union[str, RetryPolicy]`
-- **after_failure?** `Optional[Union[str, Callable[[Exception, int], Optional[Awaitable]]]]` IF specified, `after_failure` is called after each failture of `fn` and before the corresponding retry. If the retry is abandoned, `after_failture` will not be executed.
+- **after_failure?** `Optional[Union[str, Callable[[Exception, int], Optional[Awaitable]]]]` If specified, `after_failure` is called after each failture of `fn` and before the corresponding retry. If the retry is abandoned, `after_failture` will not be executed.
 
 Returns a wrapped function which accepts the same arguments as `fn` and returns an `Awaitable`.
 
@@ -124,7 +124,7 @@ abandon, delay = retry_policy(retries)
 ```
 
 - `fails` is the counter number of how many times function `fn` performs as a failure. If `fn` fails for the first time, then `fails` will be `1`
-- If `abandon` is `True`, then aioretry will give up reconnecting, otherwise aioretry will `asyncio.sleep(delay)` before the next retry.
+- If `abandon` is `True`, then aioretry will give up the retry and raise the exception directly, otherwise aioretry will sleep `delay` seconds (`asyncio.sleep(delay)`) before the next retry.
 
 ## License
 
