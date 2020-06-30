@@ -39,35 +39,27 @@ async def perform(
     *args,
     **kwargs
 ):
-    try:
-        return await fn(*args, **kwargs)
-    except Exception as e:
-        fails += 1
-        abandon, delay = retry_policy(fails)
+    while True:
+        try:
+            return await fn(*args, **kwargs)
+        except Exception as e:
+            fails += 1
+            abandon, delay = retry_policy(fails)
 
-        if abandon:
-            raise e
+            if abandon:
+                raise e
 
-        if after_failure is not None:
-            try:
-                await await_coro(after_failure(e, fails))
-            except Exception as e:
-                raise RuntimeError(
-                    f'[aioretry] after_failure failed, reason: {e}'
-                )
+            if after_failure is not None:
+                try:
+                    await await_coro(after_failure(e, fails))
+                except Exception as e:
+                    raise RuntimeError(
+                        f'[aioretry] after_failure failed, reason: {e}'
+                    )
 
-        # `delay` could be 0
-        if delay > 0:
-            await asyncio.sleep(delay)
-
-        return await perform(
-            fails,
-            fn,
-            retry_policy,
-            after_failure,
-            *args,
-            **kwargs
-        )
+            # `delay` could be 0
+            if delay > 0:
+                await asyncio.sleep(delay)
 
 
 def get_method(

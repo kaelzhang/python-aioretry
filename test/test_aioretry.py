@@ -32,6 +32,26 @@ async def test_success_instance_normal_rp():
 
 
 @pytest.mark.asyncio
+async def test_recursive():
+    class A:
+        n = 0
+
+        def _retry_policy(self, fails):
+            return False, 0
+
+        @retry('_retry_policy')
+        async def run(self):
+            self.n += 1
+
+            if self.n < 1000:
+                raise RuntimeError('fail')
+
+            return self.n
+
+    assert await A().run() == 1000
+
+
+@pytest.mark.asyncio
 async def test_success_instance_str_rp():
     class A:
         n = 1
@@ -122,7 +142,10 @@ async def test_error_usage():
     async def run():
         return 1
 
-    with pytest.raises(RuntimeError, match=f'retry_policy as a str `"_retry_policy"`'):
+    with pytest.raises(
+        RuntimeError,
+        match='retry_policy as a str `"_retry_policy"`'
+    ):
         await run()
 
 
