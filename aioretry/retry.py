@@ -35,7 +35,7 @@ async def perform(
     fails: int,
     fn: TargetFunction,
     retry_policy: RetryPolicy,
-    after_failure: Optional[AfterFailure],
+    before_retry: Optional[AfterFailure],
     *args,
     **kwargs
 ):
@@ -49,12 +49,12 @@ async def perform(
             if abandon:
                 raise e
 
-            if after_failure is not None:
+            if before_retry is not None:
                 try:
-                    await await_coro(after_failure(e, fails))
+                    await await_coro(before_retry(e, fails))
                 except Exception as e:
                     raise RuntimeError(
-                        f'[aioretry] after_failure failed, reason: {e}'
+                        f'[aioretry] before_retry failed, reason: {e}'
                     )
 
             # `delay` could be 0
@@ -82,7 +82,7 @@ def get_method(
 
 def retry(
     retry_policy: ParamRetryPolicy,
-    after_failure: Optional[ParamAfterFailure] = None
+    before_retry: Optional[ParamAfterFailure] = None
 ) -> Callable[[TargetFunction], TargetFunction]:
     def wrapper(fn: TargetFunction) -> TargetFunction:
         async def wrapped(*args, **kwargs):
@@ -95,10 +95,10 @@ def retry(
                     'retry_policy'
                 ),
                 get_method(
-                    after_failure,
+                    before_retry,
                     args,
-                    'after_failure'
-                ) if after_failure is not None else None,
+                    'before_retry'
+                ) if before_retry is not None else None,
                 *args,
                 **kwargs
             )

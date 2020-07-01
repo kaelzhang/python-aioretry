@@ -71,7 +71,7 @@ async def run_retry(async_after_failture: bool):
     errors = []
 
     if async_after_failture:
-        async def after_failure(e, fails):
+        async def before_retry(e, fails):
             errors.append(
                 (
                     e,
@@ -81,7 +81,7 @@ async def run_retry(async_after_failture: bool):
             )
 
     else:
-        def after_failure(e, fails):
+        def before_retry(e, fails):
             errors.append(
                 (
                     e,
@@ -90,7 +90,7 @@ async def run_retry(async_after_failture: bool):
                 )
             )
 
-    @retry(retry_policy, after_failure)
+    @retry(retry_policy, before_retry)
     async def run():
         length = len(errors)
 
@@ -127,12 +127,12 @@ async def run_retry(async_after_failture: bool):
 
 
 @pytest.mark.asyncio
-async def test_error_normal_after_failure():
+async def test_error_normal_before_retry():
     await run_retry(False)
 
 
 @pytest.mark.asyncio
-async def test_error_async_after_failure():
+async def test_error_async_before_retry():
     await run_retry(True)
 
 
@@ -150,19 +150,19 @@ async def test_error_usage():
 
 
 @pytest.mark.asyncio
-async def test_after_failure_fails():
+async def test_before_retry_fails():
     fail = True
 
-    def after_failure(e, i):
+    def before_retry(e, i):
         if fail:
             raise RuntimeError('boom')
 
-    @retry(retry_policy, after_failure)
+    @retry(retry_policy, before_retry)
     async def run():
         if fail:
             raise RuntimeError('haha')
 
-    with pytest.raises(RuntimeError, match='after_failure failed'):
+    with pytest.raises(RuntimeError, match='before_retry failed'):
         await run()
 
 

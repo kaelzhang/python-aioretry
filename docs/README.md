@@ -79,22 +79,22 @@ class ClientWithConfigurableRetryPolicy(Client):
 asyncio.run(ClientWithConfigurableRetryPolicy(10).connect())
 ```
 
-### Register an `after_failure` callback
+### Register an `before_retry` callback
 
-We could also register an `after_failure` callback which will be executed after every failure of the target function if the corresponding retry is not abandoned.
+We could also register an `before_retry` callback which will be executed after every failure of the target function if the corresponding retry is not abandoned.
 
 ```py
 class ClientTrackableFailures(ClientWithConfigurableRetryPolicy):
-    # `after_failure` could either be a sync function or an async function
-    async def _on_failure(self, error: Exception, fails: int) -> None:
+    # `before_retry` could either be a sync function or an async function
+    async def _before_retry(self, error: Exception, fails: int) -> None:
         await self._send_failure_log(error, fails)
 
     @retry(
       retry_policy='_retry_policy',
 
       # Similar to `retry_policy`,
-      # `after_failure` could either be a Callable or a str
-      after_failure='_on_failture'
+      # `before_retry` could either be a Callable or a str
+      before_retry='_before_retry'
     )
     async def connect(self):
         await self._connect()
@@ -103,11 +103,11 @@ class ClientTrackableFailures(ClientWithConfigurableRetryPolicy):
 
 ## APIs
 
-### retry(retry_policy, after_failure)(fn)
+### retry(retry_policy, before_retry)(fn)
 
 - **fn** `Callable[[...], Awaitable]` the function to be wrapped. The function should be an async function or normal function returns an awaitable.
 - **retry_policy** `Union[str, RetryPolicy]`
-- **after_failure?** `Optional[Union[str, Callable[[Exception, int], Optional[Awaitable]]]]` If specified, `after_failure` is called after each failture of `fn` and before the corresponding retry. If the retry is abandoned, `after_failture` will not be executed.
+- **before_retry?** `Optional[Union[str, Callable[[Exception, int], Optional[Awaitable]]]]` If specified, `before_retry` is called after each failture of `fn` and before the corresponding retry. If the retry is abandoned, `before_retry` will not be executed.
 
 Returns a wrapped function which accepts the same arguments as `fn` and returns an `Awaitable`.
 
