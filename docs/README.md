@@ -122,7 +122,7 @@ async def foo():
 - **retry_policy** `Union[str, RetryPolicy]`
 - **before_retry?** `Optional[Union[str, Callable[[Exception, int], Optional[Awaitable]]]]` If specified, `before_retry` is called after each failture of `fn` and before the corresponding retry. If the retry is abandoned, `before_retry` will not be executed.
 - **on_exceptions** `Optional[Union[Exception, Tuple[Exception, ...]]]` if `on_exceptions` is provided, then only the specific type(s) of exceptions will be handled by the retry policy. If an exception is not of the type in the given list(tuple, actually), it will be raised directly and not be captured
-- **except_exceptions** if `on_exceptions` is provided, `except_exceptions` will take no effect. If an exception is of the type in the giving list, it will be raise directly
+- **except_exceptions** if `on_exceptions` is provided, `except_exceptions` will take no effect. If an exception is of the type in the giving list, it will be raised directly
 
 Returns a wrapped function which accepts the same arguments as `fn` and returns an `Awaitable`.
 
