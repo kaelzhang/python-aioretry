@@ -4,7 +4,8 @@ from typing import (
     Callable,
     Awaitable,
     Optional,
-    TypeVar
+    TypeVar,
+    Union
 )
 
 import inspect
@@ -20,6 +21,8 @@ ParamRetryPolicy = Union[RetryPolicy, str]
 ParamAfterFailure = Union[AfterFailure, str]
 
 TargetFunction = Callable[..., Awaitable]
+Exceptions = Tuple[Exception, ...]
+ExceptionsOrException = Union[Exceptions, Exception]
 
 T = TypeVar('T', RetryPolicy, AfterFailure)
 
@@ -36,6 +39,8 @@ async def perform(
     fn: TargetFunction,
     retry_policy: RetryPolicy,
     before_retry: Optional[AfterFailure],
+    on_exceptions: Optional[Exceptions],
+    except_exceptions: Optional[Exceptions],
     *args,
     **kwargs
 ):
@@ -43,6 +48,14 @@ async def perform(
         try:
             return await fn(*args, **kwargs)
         except Exception as e:
+            if on_exceptions is not None:
+                if not isinstance(e, on_exceptions):
+                    raise e
+            elif except_exceptions is not None and isinstance(
+                e, except_exceptions
+            ):
+                raise e
+
             fails += 1
             abandon, delay = retry_policy(fails)
 
@@ -82,8 +95,16 @@ def get_method(
 
 def retry(
     retry_policy: ParamRetryPolicy,
-    before_retry: Optional[ParamAfterFailure] = None
+    before_retry: Optional[ParamAfterFailure] = None,
+    on_exceptions: Optional[Exceptions] = None,
+    except_exceptions: Optional[Exceptions] = None,
 ) -> Callable[[TargetFunction], TargetFunction]:
+    if on_exceptions is not None and type(on_exceptions) is not tuple:
+        on_exceptions = (on_exceptions,)
+
+    if except_exceptions is not None and type(except_exceptions) is not tuple:
+        except_exceptions = (except_exceptions,)
+
     def wrapper(fn: TargetFunction) -> TargetFunction:
         async def wrapped(*args, **kwargs):
             return await perform(
@@ -99,6 +120,8 @@ def retry(
                     args,
                     'before_retry'
                 ) if before_retry is not None else None,
+                on_exceptions,
+                except_exceptions,
                 *args,
                 **kwargs
             )

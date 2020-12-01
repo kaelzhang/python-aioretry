@@ -180,3 +180,65 @@ async def test_abandon():
 
     with pytest.raises(RuntimeError, match='boom'):
         await run()
+
+
+@pytest.mark.asyncio
+async def test_on_exceptions():
+    def retry_policy(_):
+        return False, 0.1
+
+    class A:
+        def __init__(self):
+            self._failed = False
+
+        @retry(
+            retry_policy=retry_policy,
+            on_exceptions=ValueError
+        )
+        async def run(self, value_error: bool = False):
+            if value_error:
+                if self._failed:
+                    return 1
+
+                self._failed = True
+                raise ValueError('value error')
+
+            raise KeyError('key error')
+
+    a = A()
+
+    assert await a.run(True) == 1
+
+    with pytest.raises(KeyError, match='key error'):
+        await a.run()
+
+
+@pytest.mark.asyncio
+async def test_except_exceptions():
+    def retry_policy(_):
+        return False, 0.1
+
+    class A:
+        def __init__(self):
+            self._failed = False
+
+        @retry(
+            retry_policy=retry_policy,
+            except_exceptions=KeyError
+        )
+        async def run(self, value_error: bool = False):
+            if value_error:
+                if self._failed:
+                    return 1
+
+                self._failed = True
+                raise ValueError('value error')
+
+            raise KeyError('key error')
+
+    a = A()
+
+    assert await a.run(True) == 1
+
+    with pytest.raises(KeyError, match='key error'):
+        await a.run()

@@ -100,6 +100,19 @@ class ClientTrackableFailures(ClientWithConfigurableRetryPolicy):
         await self._connect()
 ```
 
+### Only retry for certain types of exceptions
+
+```py
+
+@retry(
+    retry_policy=retry_policy,
+    # If it raises a RuntimeError, it will not retry.
+    on_exceptions=(KeyError, ValueError)
+)
+async def foo():
+    # do something that might raise KeyError, ValueError or RuntimeError
+    ...
+```
 
 ## APIs
 
@@ -108,6 +121,8 @@ class ClientTrackableFailures(ClientWithConfigurableRetryPolicy):
 - **fn** `Callable[[...], Awaitable]` the function to be wrapped. The function should be an async function or normal function returns an awaitable.
 - **retry_policy** `Union[str, RetryPolicy]`
 - **before_retry?** `Optional[Union[str, Callable[[Exception, int], Optional[Awaitable]]]]` If specified, `before_retry` is called after each failture of `fn` and before the corresponding retry. If the retry is abandoned, `before_retry` will not be executed.
+- **on_exceptions** `Optional[Union[Exception, Tuple[Exception, ...]]]` if `on_exceptions` is provided, then only the specific type(s) of exceptions will be handled by the retry policy. If an exception is not of the type in the given list(tuple, actually), it will be raised directly and not be captured
+- **except_exceptions** if `on_exceptions` is provided, `except_exceptions` will take no effect. If an exception is of the type in the giving list, it will be raise directly
 
 Returns a wrapped function which accepts the same arguments as `fn` and returns an `Awaitable`.
 
