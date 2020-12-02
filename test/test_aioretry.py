@@ -4,7 +4,7 @@ from datetime import datetime
 from aioretry import retry
 
 
-def retry_policy(fails):
+def retry_policy(fails, _):
     return False, (fails - 1) * 0.1
 
 
@@ -36,7 +36,7 @@ async def test_recursive():
     class A:
         n = 0
 
-        def _retry_policy(self, fails):
+        def _retry_policy(self, fails, _):
             return False, 0
 
         @retry('_retry_policy')
@@ -56,8 +56,8 @@ async def test_success_instance_str_rp():
     class A:
         n = 1
 
-        def _retry_policy(self, retries):
-            return retry_policy(retries)
+        def _retry_policy(self, retries, _):
+            return retry_policy(retries, _)
 
         @retry('_retry_policy')
         async def run(self):
@@ -168,7 +168,7 @@ async def test_before_retry_fails():
 
 @pytest.mark.asyncio
 async def test_abandon():
-    def retry_policy(fails):
+    def retry_policy(fails, _):
         return fails > 3, fails * 0.1
 
     fail = True
@@ -183,8 +183,11 @@ async def test_abandon():
 
 
 @pytest.mark.asyncio
-async def test_on_exceptions():
-    def retry_policy(_):
+async def test_retry_policy_on_exceptions():
+    def retry_policy(_, e):
+        if isinstance(e, KeyError):
+            return True, 0
+
         return False, 0.1
 
     class A:
@@ -192,39 +195,7 @@ async def test_on_exceptions():
             self._failed = False
 
         @retry(
-            retry_policy=retry_policy,
-            on_exceptions=ValueError
-        )
-        async def run(self, value_error: bool = False):
-            if value_error:
-                if self._failed:
-                    return 1
-
-                self._failed = True
-                raise ValueError('value error')
-
-            raise KeyError('key error')
-
-    a = A()
-
-    assert await a.run(True) == 1
-
-    with pytest.raises(KeyError, match='key error'):
-        await a.run()
-
-
-@pytest.mark.asyncio
-async def test_except_exceptions():
-    def retry_policy(_):
-        return False, 0.1
-
-    class A:
-        def __init__(self):
-            self._failed = False
-
-        @retry(
-            retry_policy=retry_policy,
-            except_exceptions=KeyError
+            retry_policy=retry_policy
         )
         async def run(self, value_error: bool = False):
             if value_error:
