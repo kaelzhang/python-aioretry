@@ -161,6 +161,23 @@ def retry_policy(fails, exception):
 
 Since `3.0.0`, aioretry introduces a second positional parameter of type `Exception` for `retry_policy` while the function of `2.x` only has one parameters.
 
+2.x
+
+```py
+def retry_policy(fails: int):
+    """A policy that gives no chances to retry
+    """
+
+    return True, 0
+```
+
+3.x
+
+```py
+def retry_policy(fails, int, _: Exception):
+    return True, 0
+```
+
 ## License
 
 [MIT](LICENSE)
