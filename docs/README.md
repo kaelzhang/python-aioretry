@@ -76,7 +76,7 @@ class ClientWithConfigurableRetryPolicy(Client):
     def __init__(self, max_retries: int = 3):
         self._max_retries = max_retries
 
-    def _retry_policy(self, fails: int) -> RetryPolicyStrategy:
+    def _retry_policy(self, fails: int, _) -> RetryPolicyStrategy:
         return fails > self._max_retries, fails * 0.1
 
     # Then aioretry will use `self._retry_policy` as the retry policy.
@@ -96,7 +96,7 @@ We could also register an `before_retry` callback which will be executed after e
 ```py
 class ClientTrackableFailures(ClientWithConfigurableRetryPolicy):
     # `before_retry` could either be a sync function or an async function
-    async def _before_retry(self, error: Exception, fails: int) -> None:
+    async def _before_retry(self, fails: int, error: Exception) -> None:
         await self._send_failure_log(error, fails)
 
     @retry(
@@ -133,7 +133,7 @@ async def foo():
 
 - **fn** `Callable[[...], Awaitable]` the function to be wrapped. The function should be an async function or normal function returns an awaitable.
 - **retry_policy** `Union[str, RetryPolicy]`
-- **before_retry?** `Optional[Union[str, Callable[[Exception, int], Optional[Awaitable]]]]` If specified, `before_retry` is called after each failture of `fn` and before the corresponding retry. If the retry is abandoned, `before_retry` will not be executed.
+- **before_retry?** `Optional[Union[str, Callable[[int, Exception], Optional[Awaitable]]]]` If specified, `before_retry` is called after each failure of `fn` and before the corresponding retry. If the retry is abandoned, `before_retry` will not be executed.
 
 Returns a wrapped function which accepts the same arguments as `fn` and returns an `Awaitable`.
 
@@ -196,6 +196,25 @@ def retry_policy(fails: int):
 ```py
 def retry_policy(fails, int, _: Exception):
     return True, 0
+```
+
+### 3.x -> 4.x
+
+Since `4.0.0`, `retry_policy` and `before_retry` has the same parameter types
+
+3.x
+
+```py
+def before_retry(e: Exception, fails: int):
+    ...
+```
+
+4.x
+
+```py
+# Change the sequence of the parameters
+def before_retry(fails: int, e: Exception):
+    ...
 ```
 
 ## License

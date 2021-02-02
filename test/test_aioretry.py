@@ -71,7 +71,7 @@ async def run_retry(async_after_failture: bool):
     errors = []
 
     if async_after_failture:
-        async def before_retry(e, fails):
+        async def before_retry(fails, e):
             errors.append(
                 (
                     e,
@@ -81,7 +81,7 @@ async def run_retry(async_after_failture: bool):
             )
 
     else:
-        def before_retry(e, fails):
+        def before_retry(fails, e):
             errors.append(
                 (
                     e,
@@ -153,7 +153,7 @@ async def test_error_usage():
 async def test_before_retry_fails():
     fail = True
 
-    def before_retry(e, i):
+    def before_retry(i, e):
         if fail:
             raise RuntimeError('boom')
 

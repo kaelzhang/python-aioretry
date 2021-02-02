@@ -14,7 +14,7 @@ import asyncio
 RetryPolicyStrategy = Tuple[bool, Union[int, float]]
 
 RetryPolicy = Callable[[int, Exception], RetryPolicyStrategy]
-BeforeRetry = Callable[[Exception, int], Optional[Awaitable[None]]]
+BeforeRetry = Callable[[int, Exception], Optional[Awaitable[None]]]
 
 ParamRetryPolicy = Union[RetryPolicy, str]
 ParamBeforeRetry = Union[BeforeRetry, str]
@@ -53,7 +53,7 @@ async def perform(
 
             if before_retry is not None:
                 try:
-                    await await_coro(before_retry(e, fails))
+                    await await_coro(before_retry(fails, e))
                 except Exception as e:
                     raise RuntimeError(
                         f'[aioretry] before_retry failed, reason: {e}'
@@ -86,6 +86,21 @@ def retry(
     retry_policy: ParamRetryPolicy,
     before_retry: Optional[ParamBeforeRetry] = None
 ) -> Callable[[TargetFunction], TargetFunction]:
+    """Creates a decorator function
+
+    Args:
+        retry_policy (RetryPolicy, str): the retry policy
+        before_retry (BeforeRetry, str, None): the function to be called after each failure of fn and before the corresponding retry.
+
+    Returns:
+        A wrapped function which accepts the same arguments as fn and returns an Awaitable
+
+    Usage::
+        @retry(retry_policy)
+        async def coro_func():
+            ...
+    """
+
     def wrapper(fn: TargetFunction) -> TargetFunction:
         async def wrapped(*args, **kwargs):
             return await perform(
