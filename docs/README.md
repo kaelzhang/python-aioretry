@@ -23,10 +23,14 @@ from typing import (
   Tuple
 )
 
-from aioretry import retry
+from aioretry import (
+    retry,
+    # Tuple[bool, Union[int, float]]
+    RetryPolicyStrategy
+)
 
-
-def retry_policy(fails: int, _: Exception) -> Tuple[bool, float]:
+# This example shows the usage with python typings
+def retry_policy(fails: int, _: Exception) -> RetryPolicyStrategy:
     """The second parameter of `retry_policy` is the exception,
     which we will not use in this simple example.
 
@@ -72,7 +76,7 @@ class ClientWithConfigurableRetryPolicy(Client):
     def __init__(self, max_retries: int = 3):
         self._max_retries = max_retries
 
-    def _retry_policy(self, fails: int) -> Tuple[bool, float]:
+    def _retry_policy(self, fails: int) -> RetryPolicyStrategy:
         return fails > self._max_retries, fails * 0.1
 
     # Then aioretry will use `self._retry_policy` as the retry policy.
@@ -109,12 +113,15 @@ class ClientTrackableFailures(ClientWithConfigurableRetryPolicy):
 ### Only retry for certain types of exceptions
 
 ```py
+def retry_policy(fails: int, exception: Exception) -> RetryPolicyStrategy:
+    if isinstance(exception, (KeyError, ValueError)):
+        # If it raises a KeyError or a ValueError, it will not retry.
+        return True, 0
 
-@retry(
-    retry_policy=retry_policy,
-    # If it raises a RuntimeError, it will not retry.
-    on_exceptions=(KeyError, ValueError)
-)
+    # Otherwise, retry immediately
+    return False, 0
+
+@retry(retry_policy)
 async def foo():
     # do something that might raise KeyError, ValueError or RuntimeError
     ...
@@ -153,6 +160,19 @@ def retry_policy(fails, exception):
         return True, 0
 
     return False, fails * 0.1
+```
+
+### Python typings
+
+```py
+from aioretry import (
+    # The type of retry_policy function
+    RetryPolicy,
+    # The type of the return value of retry_policy function
+    RetryPolicyStrategy,
+    # The type of before_retry function
+    BeforeRetry
+)
 ```
 
 ## Upgrade guide
