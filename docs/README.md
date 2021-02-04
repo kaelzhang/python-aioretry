@@ -32,9 +32,7 @@ from aioretry import (
 
 # This example shows the usage with python typings
 def retry_policy(info: RetryInfo) -> RetryPolicyStrategy:
-    """The second parameter of `retry_policy` is the exception,
-    which we will not use in this simple example.
-
+    """
     - It will always retry until succeeded
     - If fails for the first time, it will retry immediately,
     - If it fails again,
