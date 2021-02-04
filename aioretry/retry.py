@@ -9,12 +9,51 @@ from typing import (
 
 import inspect
 import asyncio
+from datetime import datetime
+
+
+class RetryInfo:
+    __slots__ = (
+        'fails',
+        'exception',
+        'since'
+    )
+
+    fails: int
+    exception: Exception
+    since: datetime
+
+    def __init__(
+        self,
+        fails: int,
+        exception: Exception,
+        since: datetime
+    ) -> None:
+        self.fails = fails
+        self.exception = exception
+        self.since = since
+
+    def update(
+        self,
+        exception: Exception
+    ) -> 'RetryInfo':
+        """Create a new RetryInfo and update fails and exception
+
+        Why?
+            The object might be collected by user, so we need to create a new object every time it fails.
+        """
+
+        return RetryInfo(
+            self.fails + 1,
+            exception,
+            self.since
+        )
 
 
 RetryPolicyStrategy = Tuple[bool, Union[int, float]]
 
-RetryPolicy = Callable[[int, Exception], RetryPolicyStrategy]
-BeforeRetry = Callable[[int, Exception], Optional[Awaitable[None]]]
+RetryPolicy = Callable[[RetryInfo], RetryPolicyStrategy]
+BeforeRetry = Callable[[RetryInfo], Optional[Awaitable[None]]]
 
 ParamRetryPolicy = Union[RetryPolicy, str]
 ParamBeforeRetry = Union[BeforeRetry, str]
@@ -34,26 +73,31 @@ async def await_coro(coro):
 
 
 async def perform(
-    fails: int,
     fn: TargetFunction,
     retry_policy: RetryPolicy,
     before_retry: Optional[BeforeRetry],
     *args,
     **kwargs
 ):
+    info = None
+
     while True:
         try:
             return await fn(*args, **kwargs)
         except Exception as e:
-            fails += 1
-            abandon, delay = retry_policy(fails, e)
+            if info is None:
+                info = RetryInfo(1, e, datetime.now())
+            else:
+                info = info.update(e)
+
+            abandon, delay = retry_policy(info)
 
             if abandon:
                 raise e
 
             if before_retry is not None:
                 try:
-                    await await_coro(before_retry(fails, e))
+                    await await_coro(before_retry(info))
                 except Exception as e:
                     raise RuntimeError(
                         f'[aioretry] before_retry failed, reason: {e}'
@@ -74,7 +118,7 @@ def get_method(
 
     if len(args) == 0:
         raise RuntimeError(
-            f'[aioretry] decorator should be used for instance method if {name} as a str `"{target}"` '
+            f'[aioretry] decorator should be used for instance method if {name} as a str `"{target}"`'
         )
 
     self = args[0]
@@ -104,7 +148,6 @@ def retry(
     def wrapper(fn: TargetFunction) -> TargetFunction:
         async def wrapped(*args, **kwargs):
             return await perform(
-                0,
                 fn,
                 get_method(
                     retry_policy,

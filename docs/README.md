@@ -26,11 +26,12 @@ from typing import (
 from aioretry import (
     retry,
     # Tuple[bool, Union[int, float]]
-    RetryPolicyStrategy
+    RetryPolicyStrategy,
+    RetryInfo
 )
 
 # This example shows the usage with python typings
-def retry_policy(fails: int, _: Exception) -> RetryPolicyStrategy:
+def retry_policy(info: RetryInfo) -> RetryPolicyStrategy:
     """The second parameter of `retry_policy` is the exception,
     which we will not use in this simple example.
 
@@ -43,7 +44,7 @@ def retry_policy(fails: int, _: Exception) -> RetryPolicyStrategy:
       100ms delay before the 5th retry,
       etc...
     """
-    return False, (fails - 1) % 3 * 0.1
+    return False, (info.fails - 1) % 3 * 0.1
 
 
 @retry(retry_policy)
@@ -76,8 +77,8 @@ class ClientWithConfigurableRetryPolicy(Client):
     def __init__(self, max_retries: int = 3):
         self._max_retries = max_retries
 
-    def _retry_policy(self, fails: int, _) -> RetryPolicyStrategy:
-        return fails > self._max_retries, fails * 0.1
+    def _retry_policy(self, info: RetryInfo) -> RetryPolicyStrategy:
+        return info.fails > self._max_retries, info.fails * 0.1
 
     # Then aioretry will use `self._retry_policy` as the retry policy.
     # And by using a str as the parameter `retry_policy`,
@@ -96,8 +97,8 @@ We could also register an `before_retry` callback which will be executed after e
 ```py
 class ClientTrackableFailures(ClientWithConfigurableRetryPolicy):
     # `before_retry` could either be a sync function or an async function
-    async def _before_retry(self, fails: int, error: Exception) -> None:
-        await self._send_failure_log(error, fails)
+    async def _before_retry(self, info: RetryInfo) -> None:
+        await self._send_failure_log(info.exception, info.fails)
 
     @retry(
       retry_policy='_retry_policy',
@@ -113,8 +114,8 @@ class ClientTrackableFailures(ClientWithConfigurableRetryPolicy):
 ### Only retry for certain types of exceptions
 
 ```py
-def retry_policy(fails: int, exception: Exception) -> RetryPolicyStrategy:
-    if isinstance(exception, (KeyError, ValueError)):
+def retry_policy(info: RetryInfo) -> RetryPolicyStrategy:
+    if isinstance(info.exception, (KeyError, ValueError)):
         # If it raises a KeyError or a ValueError, it will not retry.
         return True, 0
 
@@ -133,33 +134,35 @@ async def foo():
 
 - **fn** `Callable[[...], Awaitable]` the function to be wrapped. The function should be an async function or normal function returns an awaitable.
 - **retry_policy** `Union[str, RetryPolicy]`
-- **before_retry?** `Optional[Union[str, Callable[[int, Exception], Optional[Awaitable]]]]` If specified, `before_retry` is called after each failure of `fn` and before the corresponding retry. If the retry is abandoned, `before_retry` will not be executed.
+- **before_retry?** `Optional[Union[str, Callable[[RetryInfo], Optional[Awaitable]]]]` If specified, `before_retry` is called after each failure of `fn` and before the corresponding retry. If the retry is abandoned, `before_retry` will not be executed.
 
 Returns a wrapped function which accepts the same arguments as `fn` and returns an `Awaitable`.
 
 ### RetryPolicy
 
 ```py
-RetryPolicy = Callable[[int, Exception], Tuple[bool, Union[float, int]]]
+RetryPolicy = Callable[[RetryInfo], Tuple[bool, Union[float, int]]]
 ```
 
 Retry policy is used to determine what to do next after the `fn` fails to do some certain thing.
 
 ```py
-abandon, delay = retry_policy(fails, exception)
+abandon, delay = retry_policy(info)
 ```
 
-- `fails` is the counter number of how many times function `fn` performs as a failure. If `fn` fails for the first time, then `fails` will be `1`
-- `exception` is the exception that `fn` raised
+- **info** `RetryInfo`
+  - **info.fails** `int` is the counter number of how many times function `fn` performs as a failure. If `fn` fails for the first time, then `fails` will be `1`.
+  - **info.exception** `Exception` is the exception that `fn` raised.
+  - **info.since** `datetime` is the datetime when the first failure happens.
 - If `abandon` is `True`, then aioretry will give up the retry and raise the exception directly, otherwise aioretry will sleep `delay` seconds (`asyncio.sleep(delay)`) before the next retry.
 
 ```py
-def retry_policy(fails, exception):
-    if isinstance(exception, KeyError):
+def retry_policy(info: RetryInfo):
+    if isinstance(info.exception, KeyError):
         # Just raise exceptions of type KeyError
         return True, 0
 
-    return False, fails * 0.1
+    return False, info.fails * 0.1
 ```
 
 ### Python typings
@@ -171,15 +174,16 @@ from aioretry import (
     # The type of the return value of retry_policy function
     RetryPolicyStrategy,
     # The type of before_retry function
-    BeforeRetry
+    BeforeRetry,
+    RetryInfo
 )
 ```
 
 ## Upgrade guide
 
-### 2.x -> 3.x
+Since `5.0.0`, aioretry introduces `RetryInfo` as the only parameter of `retry_policy` or `before_retry`
 
-Since `3.0.0`, aioretry introduces a second positional parameter of type `Exception` for `retry_policy` while the function of `2.x` only has one parameters.
+### 2.x -> 5.x
 
 2.x
 
@@ -188,19 +192,17 @@ def retry_policy(fails: int):
     """A policy that gives no chances to retry
     """
 
-    return True, 0
+    return True, 0.1 * fails
 ```
 
-3.x
+5.x
 
 ```py
-def retry_policy(fails, int, _: Exception):
-    return True, 0
+def retry_policy(info: RetryInfo):
+    return True, 0.1 * info.fails
 ```
 
-### 3.x -> 4.x
-
-Since `4.0.0`, `retry_policy` and `before_retry` has the same parameter types
+### 3.x -> 5.x
 
 3.x
 
@@ -209,13 +211,19 @@ def before_retry(e: Exception, fails: int):
     ...
 ```
 
-4.x
+5.x
 
 ```py
 # Change the sequence of the parameters
-def before_retry(fails: int, e: Exception):
+def before_retry(info: RetryInfo):
+    info.exception
+    info.fails
     ...
 ```
+
+### 4.x -> 5.x
+
+Since `5.0.0`, both `retry_policy` and `before_retry` have only one parameter of type `RetryInfo` respectively.
 
 ## License
 

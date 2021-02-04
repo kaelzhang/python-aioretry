@@ -1,11 +1,14 @@
 import pytest
-from datetime import datetime
+from datetime import (
+    datetime,
+    timedelta
+)
 
 from aioretry import retry
 
 
-def retry_policy(fails, _):
-    return False, (fails - 1) * 0.1
+def retry_policy(info):
+    return False, (info.fails - 1) * 0.1
 
 
 @pytest.mark.asyncio
@@ -36,7 +39,7 @@ async def test_recursive():
     class A:
         n = 0
 
-        def _retry_policy(self, fails, _):
+        def _retry_policy(self, info):
             return False, 0
 
         @retry('_retry_policy')
@@ -56,8 +59,8 @@ async def test_success_instance_str_rp():
     class A:
         n = 1
 
-        def _retry_policy(self, retries, _):
-            return retry_policy(retries, _)
+        def _retry_policy(self, info):
+            return retry_policy(info)
 
         @retry('_retry_policy')
         async def run(self):
@@ -71,21 +74,19 @@ async def run_retry(async_after_failture: bool):
     errors = []
 
     if async_after_failture:
-        async def before_retry(fails, e):
+        async def before_retry(info):
             errors.append(
                 (
-                    e,
-                    fails,
+                    info,
                     datetime.now()
                 )
             )
 
     else:
-        def before_retry(fails, e):
+        def before_retry(info):
             errors.append(
                 (
-                    e,
-                    fails,
+                    info,
                     datetime.now()
                 )
             )
@@ -104,8 +105,8 @@ async def run_retry(async_after_failture: bool):
     assert await run() == 1
 
     primative = [
-        (int(str(e)), f)
-        for e, f, _ in errors
+        (int(str(info.exception)), info.fails)
+        for info, _ in errors
     ]
 
     assert primative == [
@@ -115,15 +116,23 @@ async def run_retry(async_after_failture: bool):
         (3, 4)
     ]
 
+    since = None
+
     for i, t in enumerate(errors):
-        s = t[2]
+        info, time = t
+
+        if since is None:
+            since = info.since
+            assert current < since < current + timedelta(seconds=0.1)
+        else:
+            assert since == info.since
 
         delay = max(0, (i - 1) * 0.1)
-        delta = (s - current).total_seconds()
+        delta = (time - current).total_seconds()
 
         assert delay < delta < delay + 0.1
 
-        current = s
+        current = time
 
 
 @pytest.mark.asyncio
@@ -153,7 +162,7 @@ async def test_error_usage():
 async def test_before_retry_fails():
     fail = True
 
-    def before_retry(i, e):
+    def before_retry(info):
         if fail:
             raise RuntimeError('boom')
 
@@ -168,8 +177,8 @@ async def test_before_retry_fails():
 
 @pytest.mark.asyncio
 async def test_abandon():
-    def retry_policy(fails, _):
-        return fails > 3, fails * 0.1
+    def retry_policy(info):
+        return info.fails > 3, info.fails * 0.1
 
     fail = True
 
@@ -184,8 +193,8 @@ async def test_abandon():
 
 @pytest.mark.asyncio
 async def test_retry_policy_on_exceptions():
-    def retry_policy(_, e):
-        if isinstance(e, KeyError):
+    def retry_policy(info):
+        if isinstance(info.exception, KeyError):
             return True, 0
 
         return False, 0.1
