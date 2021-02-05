@@ -4,7 +4,9 @@ from datetime import (
     timedelta
 )
 
-from aioretry import retry
+from aioretry import (
+    retry
+)
 
 
 def retry_policy(info):
@@ -153,7 +155,7 @@ async def test_error_usage():
 
     with pytest.raises(
         RuntimeError,
-        match='retry_policy as a str `"_retry_policy"`'
+        match='retry_policy as a str "_retry_policy"'
     ):
         await run()
 
@@ -171,8 +173,9 @@ async def test_before_retry_fails():
         if fail:
             raise RuntimeError('haha')
 
-    with pytest.raises(RuntimeError, match='before_retry failed'):
-        await run()
+    with pytest.warns(UserWarning, match='fix'):
+        with pytest.raises(RuntimeError, match='boom'):
+            await run()
 
 
 @pytest.mark.asyncio
@@ -222,3 +225,17 @@ async def test_retry_policy_on_exceptions():
 
     with pytest.raises(KeyError, match='key error'):
         await a.run()
+
+
+@pytest.mark.asyncio
+async def test_retry_policy_raises():
+    def retry_policy():
+        return False, 0
+
+    @retry(retry_policy)
+    async def run():
+        raise RuntimeError('boom')
+
+    with pytest.warns(UserWarning, match='fix'):
+        with pytest.raises(TypeError, match='but 1 was given'):
+            await run()

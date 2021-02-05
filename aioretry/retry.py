@@ -7,6 +7,7 @@ from typing import (
     TypeVar
 )
 
+import warnings
 import inspect
 import asyncio
 from datetime import datetime
@@ -72,6 +73,16 @@ async def await_coro(coro):
     return coro
 
 
+def warn(method_name: str, exception: Exception):
+    warnings.warn(
+        f"""[aioretry] {method_name} raises an exception:
+    {exception}
+It is usually a bug that you should fix!""",
+        UserWarning,
+        stacklevel=2
+    )
+
+
 async def perform(
     fn: TargetFunction,
     retry_policy: RetryPolicy,
@@ -90,7 +101,11 @@ async def perform(
             else:
                 info = info.update(e)
 
-            abandon, delay = retry_policy(info)
+            try:
+                abandon, delay = retry_policy(info)
+            except Exception as e:
+                warn('retry_policy', e)
+                raise e
 
             if abandon:
                 raise e
@@ -99,9 +114,8 @@ async def perform(
                 try:
                     await await_coro(before_retry(info))
                 except Exception as e:
-                    raise RuntimeError(
-                        f'[aioretry] before_retry failed, reason: {e}'
-                    )
+                    warn('before_retry', e)
+                    raise e
 
             # `delay` could be 0
             if delay > 0:
@@ -118,7 +132,7 @@ def get_method(
 
     if len(args) == 0:
         raise RuntimeError(
-            f'[aioretry] decorator should be used for instance method if {name} as a str `"{target}"`'
+            f'[aioretry] decorator should be used for instance method if {name} as a str "{target}", which should be fixed'
         )
 
     self = args[0]
