@@ -59,11 +59,14 @@ BeforeRetry = Callable[[RetryInfo], Optional[Awaitable[None]]]
 ParamRetryPolicy = Union[RetryPolicy, str]
 ParamBeforeRetry = Union[BeforeRetry, str]
 
-TargetFunction = Callable[..., Awaitable]
 Exceptions = Tuple[Exception, ...]
 ExceptionsOrException = Union[Exceptions, Exception]
 
 T = TypeVar('T', RetryPolicy, BeforeRetry)
+
+# Return type
+RT = TypeVar('RT')
+TargetFunction = Callable[..., Awaitable[RT]]
 
 
 async def await_coro(coro):
@@ -84,12 +87,12 @@ It is usually a bug that you should fix!""",
 
 
 async def perform(
-    fn: TargetFunction,
+    fn: TargetFunction[RT],
     retry_policy: RetryPolicy,
     before_retry: Optional[BeforeRetry],
     *args,
     **kwargs
-):
+) -> RT:
     info = None
 
     while True:
@@ -143,7 +146,7 @@ def get_method(
 def retry(
     retry_policy: ParamRetryPolicy,
     before_retry: Optional[ParamBeforeRetry] = None
-) -> Callable[[TargetFunction], TargetFunction]:
+) -> Callable[[TargetFunction[RT]], TargetFunction[RT]]:
     """Creates a decorator function
 
     Args:
@@ -159,8 +162,8 @@ def retry(
             ...
     """
 
-    def wrapper(fn: TargetFunction) -> TargetFunction:
-        async def wrapped(*args, **kwargs):
+    def wrapper(fn: TargetFunction[RT]) -> TargetFunction[RT]:
+        async def wrapped(*args, **kwargs) -> RT:
             return await perform(
                 fn,
                 get_method(

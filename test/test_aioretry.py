@@ -14,6 +14,18 @@ def retry_policy(info):
 
 
 @pytest.mark.asyncio
+async def test_simple():
+    async def just_return():
+        return 1
+
+    assert await just_return() == 1
+
+    retried = retry(retry_policy)(just_return)
+
+    assert await retried() == 1
+
+
+@pytest.mark.asyncio
 async def test_success():
     @retry(retry_policy)
     async def run(n):
