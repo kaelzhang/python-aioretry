@@ -91,17 +91,17 @@ async def perform(
                 abandon, delay = retry_policy(info)
             except Exception as e:
                 warn("retry_policy", e)
-                raise e
+                raise
 
             if abandon:
-                raise e
+                raise
 
             if before_retry is not None:
                 try:
                     await await_coro(before_retry(info))
                 except Exception as e:
                     warn("before_retry", e)
-                    raise e
+                    raise
 
             # `delay` could be 0
             if delay > 0:
@@ -113,7 +113,7 @@ def get_method(
     args: Tuple,
     name: str,
 ) -> T:
-    if type(target) is not str:
+    if not isinstance(target, str):
         return target
 
     if len(args) == 0:
@@ -127,7 +127,8 @@ def get_method(
 
 
 def retry(
-    retry_policy: ParamRetryPolicy, before_retry: Optional[ParamBeforeRetry] = None
+    retry_policy: ParamRetryPolicy,
+    before_retry: Optional[ParamBeforeRetry] = None,
 ) -> Callable[[TargetFunction], TargetFunction]:
     """Creates a decorator function
 
