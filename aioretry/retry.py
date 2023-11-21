@@ -1,11 +1,4 @@
-from typing import (
-    Tuple,
-    Union,
-    Callable,
-    Awaitable,
-    Optional,
-    TypeVar
-)
+from typing import Tuple, Union, Callable, Coroutine, Optional, TypeVar
 
 import warnings
 import inspect
@@ -14,56 +7,42 @@ from datetime import datetime
 
 
 class RetryInfo:
-    __slots__ = (
-        'fails',
-        'exception',
-        'since'
-    )
+    __slots__ = ("fails", "exception", "since")
 
     fails: int
     exception: Exception
     since: datetime
 
-    def __init__(
-        self,
-        fails: int,
-        exception: Exception,
-        since: datetime
-    ) -> None:
+    def __init__(self, fails: int, exception: Exception, since: datetime) -> None:
         self.fails = fails
         self.exception = exception
         self.since = since
 
-    def update(
-        self,
-        exception: Exception
-    ) -> 'RetryInfo':
+    def update(self, exception: Exception) -> "RetryInfo":
         """Create a new RetryInfo and update fails and exception
 
         Why?
             The object might be collected by user, so we need to create a new object every time it fails.
         """
 
-        return RetryInfo(
-            self.fails + 1,
-            exception,
-            self.since
-        )
+        return RetryInfo(self.fails + 1, exception, self.since)
 
 
 RetryPolicyStrategy = Tuple[bool, Union[int, float]]
 
 RetryPolicy = Callable[[RetryInfo], RetryPolicyStrategy]
-BeforeRetry = Callable[[RetryInfo], Optional[Awaitable[None]]]
+BeforeRetry = Callable[[RetryInfo], Optional[Coroutine[None, None, None]]]
 
 ParamRetryPolicy = Union[RetryPolicy, str]
 ParamBeforeRetry = Union[BeforeRetry, str]
 
-TargetFunction = Callable[..., Awaitable]
+# we imply that TargetFunction does not have yield and send types.
+TargetFunctionR = TypeVar("TargetFunctionR")
+TargetFunction = Callable[..., Coroutine[None, None, TargetFunctionR]]
 Exceptions = Tuple[Exception, ...]
 ExceptionsOrException = Union[Exceptions, Exception]
 
-T = TypeVar('T', RetryPolicy, BeforeRetry)
+T = TypeVar("T", RetryPolicy, BeforeRetry)
 
 
 async def await_coro(coro):
@@ -79,7 +58,7 @@ def warn(method_name: str, exception: Exception):
     {exception}
 It is usually a bug that you should fix!""",
         UserWarning,
-        stacklevel=2
+        stacklevel=2,
     )
 
 
@@ -88,7 +67,7 @@ async def perform(
     retry_policy: RetryPolicy,
     before_retry: Optional[BeforeRetry],
     *args,
-    **kwargs
+    **kwargs,
 ):
     info = None
 
@@ -104,7 +83,7 @@ async def perform(
             try:
                 abandon, delay = retry_policy(info)
             except Exception as e:
-                warn('retry_policy', e)
+                warn("retry_policy", e)
                 raise e
 
             if abandon:
@@ -114,7 +93,7 @@ async def perform(
                 try:
                     await await_coro(before_retry(info))
                 except Exception as e:
-                    warn('before_retry', e)
+                    warn("before_retry", e)
                     raise e
 
             # `delay` could be 0
@@ -141,8 +120,7 @@ def get_method(
 
 
 def retry(
-    retry_policy: ParamRetryPolicy,
-    before_retry: Optional[ParamBeforeRetry] = None
+    retry_policy: ParamRetryPolicy, before_retry: Optional[ParamBeforeRetry] = None
 ) -> Callable[[TargetFunction], TargetFunction]:
     """Creates a decorator function
 
@@ -163,18 +141,12 @@ def retry(
         async def wrapped(*args, **kwargs):
             return await perform(
                 fn,
-                get_method(
-                    retry_policy,
-                    args,
-                    'retry_policy'
-                ),
-                get_method(
-                    before_retry,
-                    args,
-                    'before_retry'
-                ) if before_retry is not None else None,
+                get_method(retry_policy, args, "retry_policy"),
+                get_method(before_retry, args, "before_retry")
+                if before_retry is not None
+                else None,
                 *args,
-                **kwargs
+                **kwargs,
             )
 
         return wrapped
