@@ -10,7 +10,7 @@ fix:
 	autopep8 --in-place -r $(files)
 
 install:
-	pip install -U -r requirements.txt -r test-requirements.txt
+	pip install .[test]
 
 report:
 	codecov

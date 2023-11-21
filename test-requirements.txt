@@ -1,9 +1,0 @@
-codecov
-coverage
-flake8
-autopep8
-pytest
-pytest-asyncio
-pytest-cov
-setuptools
-twine
