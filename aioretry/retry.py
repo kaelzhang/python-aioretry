@@ -130,7 +130,7 @@ def get_method(
     args: Tuple,
     name: str,
 ) -> T:
-    if type(target) is not str:
+    if not isinstance(target, str):
         return target
 
     if len(args) == 0:

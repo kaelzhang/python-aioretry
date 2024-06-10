@@ -1,0 +1,5 @@
+[lint]
+ignore = ["E501"]
+
+[lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
