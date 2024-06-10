@@ -21,7 +21,7 @@ import datetime
 
 project = 'aioretry'
 copyright = f'2019-{datetime.date.today().year}, kaelzhang< and contributors'
-author = 'kaelzhang <>'
+author = 'kaelzhang <i+pypi@kael.me>'
 
 
 # -- General configuration ---------------------------------------------------

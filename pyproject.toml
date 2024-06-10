@@ -1,0 +1,30 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "aioretry"
+description = "Asyncio retry utility for Python 3.7+"
+authors = ["Kael Zhang <i+pypi@kael.me>"]
+readme = "docs/README.md"
+license = "MIT"
+keywords = ["aioretry"]
+version = "5.0.3"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+[project.urls]
+"Homepage" = "https://github.com/kaelzhang/python-aioretry"
+
+[project.optional-dependencies]
+dev = [
+    "codecov",
+    "coverage",
+    "ruff",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "twine",
+    "poetry"
+]

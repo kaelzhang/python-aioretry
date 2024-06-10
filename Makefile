@@ -10,14 +10,14 @@ fix:
 	ruff check --fix $(files)
 
 install:
-	pip install -U -r requirements.txt -r test-requirements.txt
+	pip install -U .[dev]
 
 report:
 	codecov
 
 build: aioretry
 	rm -rf dist
-	python setup.py sdist bdist_wheel
+	python -m build
 
 publish:
 	make build

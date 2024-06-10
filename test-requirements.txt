@@ -1,8 +1,0 @@
-codecov
-coverage
-ruff
-pytest
-pytest-asyncio
-pytest-cov
-setuptools
-twine
