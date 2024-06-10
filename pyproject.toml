@@ -32,6 +32,5 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
-    "twine",
-    "setuptools"
+    "twine"
 ]
