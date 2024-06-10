@@ -1,18 +1,25 @@
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.poetry]
+[project]
 name = "aioretry"
+authors = [{name = "Kael Zhang", email = "i+pypi@kael.me"}]
 description = "Asyncio retry utility for Python 3.7+"
-authors = ["Kael Zhang <i+pypi@kael.me>"]
-readme = "docs/README.md"
-license = "MIT"
+readme = "README.md"
+license = {file = "LICENSE"}
 keywords = ["aioretry"]
-version = "5.0.3"
-
-[tool.poetry.dependencies]
-python = "^3.8"
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+]
+requires-python = ">=3.7"
+dynamic = ['version']
+dependencies = []
 
 [project.urls]
 "Homepage" = "https://github.com/kaelzhang/python-aioretry"
@@ -26,5 +33,5 @@ dev = [
     "pytest-asyncio",
     "pytest-cov",
     "twine",
-    "poetry"
+    "setuptools"
 ]
