@@ -54,7 +54,8 @@ class RetryInfo:
 RetryPolicyStrategy = Tuple[bool, Union[int, float]]
 
 RetryPolicy = Callable[[RetryInfo], RetryPolicyStrategy]
-BeforeRetry = Callable[[RetryInfo], Optional[Coroutine[None, None, None]]]
+BeforeRetryRT = Optional[Coroutine[None, None, None]]
+BeforeRetry = Callable[[RetryInfo], BeforeRetryRT]
 
 ParamRetryPolicy = Union[RetryPolicy, str]
 ParamBeforeRetry = Union[BeforeRetry, str]
@@ -69,11 +70,9 @@ RT = TypeVar('RT')
 TargetFunction = Callable[..., Coroutine[None, None, RT]]
 
 
-async def await_coro(coro):
+async def await_coro(coro: BeforeRetryRT) -> None:
     if inspect.isawaitable(coro):
-        return await coro
-
-    return coro
+        await coro
 
 
 def warn(method_name: str, exception: Exception):
