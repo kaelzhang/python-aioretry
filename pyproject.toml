@@ -4,7 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aioretry"
-authors = [{name = "Kael Zhang", email = "i+pypi@kael.me"}]
+authors = [
+    {name = "Kael Zhang", email = "i+pypi@kael.me"}
+]
 description = "Asyncio retry utility for Python 3.7+"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -34,3 +36,6 @@ dev = [
     "pytest-cov",
     "twine"
 ]
+
+[tool.setuptools.dynamic]
+version = {attr = "aioretry.__version__"}
