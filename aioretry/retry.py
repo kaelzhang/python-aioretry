@@ -1,11 +1,24 @@
+import sys
+
 from typing import (
     Tuple,
     Union,
     Callable,
     Coroutine,
     Optional,
-    TypeVar
+    TypeVar,
 )
+
+# Import ParamSpec if supported
+if sys.version_info >= (3, 10):
+    from typing import ParamSpec
+
+    PS = ParamSpec('PS')
+else:
+    from typing_extensions import ParamSpec
+
+    PS = ParamSpec('PS')
+
 
 import warnings
 import inspect
@@ -67,7 +80,7 @@ T = TypeVar('T', RetryPolicy, BeforeRetry)
 
 # Return type
 RT = TypeVar('RT')
-TargetFunction = Callable[..., Coroutine[None, None, RT]]
+TargetFunction = Callable[PS, Coroutine[None, None, RT]]
 
 
 async def await_coro(coro: BeforeRetryRT) -> None:
@@ -86,38 +99,38 @@ It is usually a bug that you should fix!""",
 
 
 async def perform(
-    fn: TargetFunction[RT],
+    fn: TargetFunction[PS, RT],
     retry_policy: RetryPolicy,
     before_retry: Optional[BeforeRetry],
-    *args,
-    **kwargs
+    *args: PS.args,
+    **kwargs: PS.kwargs,
 ) -> RT:
     info = None
 
     while True:
         try:
             return await fn(*args, **kwargs)
-        except Exception as e:
+        except Exception as fne:
             if info is None:
-                info = RetryInfo(1, e, datetime.now())
+                info = RetryInfo(1, fne, datetime.now())
             else:
-                info = info.update(e)
+                info = info.update(fne)
 
             try:
                 abandon, delay = retry_policy(info)
-            except Exception as e:
-                warn('retry_policy', e)
-                raise e
+            except Exception as pe:
+                warn('retry_policy', pe)
+                raise pe
 
             if abandon:
-                raise e
+                raise fne
 
             if before_retry is not None:
                 try:
                     await await_coro(before_retry(info))
-                except Exception as e:
-                    warn('before_retry', e)
-                    raise e
+                except Exception as be:
+                    warn('before_retry', be)
+                    raise be
 
             # `delay` could be 0
             if delay > 0:
@@ -144,8 +157,8 @@ def get_method(
 
 def retry(
     retry_policy: ParamRetryPolicy,
-    before_retry: Optional[ParamBeforeRetry] = None
-) -> Callable[[TargetFunction[RT]], TargetFunction[RT]]:
+    before_retry: Optional[ParamBeforeRetry] = None,
+) -> Callable[[TargetFunction[PS, RT]], TargetFunction[PS, RT]]:
     """Creates a decorator function
 
     Args:
@@ -161,22 +174,18 @@ def retry(
             ...
     """
 
-    def wrapper(fn: TargetFunction[RT]) -> TargetFunction[RT]:
-        async def wrapped(*args, **kwargs) -> RT:
+    def wrapper(fn: TargetFunction[PS, RT]) -> TargetFunction[PS, RT]:
+        async def wrapped(*args: PS.args, **kwargs: PS.kwargs) -> RT:
             return await perform(
                 fn,
-                get_method(
-                    retry_policy,
-                    args,
-                    'retry_policy'
+                get_method(retry_policy, args, 'retry_policy'),
+                (
+                    get_method(before_retry, args, 'before_retry')
+                    if before_retry is not None
+                    else None
                 ),
-                get_method(
-                    before_retry,
-                    args,
-                    'before_retry'
-                ) if before_retry is not None else None,
                 *args,
-                **kwargs
+                **kwargs,
             )
 
         return wrapped

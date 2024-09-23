@@ -34,8 +34,15 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
-    "twine"
+    "twine",
+    "mypy",
 ]
 
 [tool.setuptools.dynamic]
 version = {attr = "aioretry.__version__"}
+
+[tool.mypy]
+warn_return_any = true
+ignore_missing_imports = true
+no_implicit_optional = true
+strict_optional = true
