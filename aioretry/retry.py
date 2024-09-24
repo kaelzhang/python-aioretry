@@ -15,9 +15,9 @@ if sys.version_info >= (3, 10):
 
     PS = ParamSpec('PS')
 else:
-    from typing_extensions import ParamSpec
+    from typing_extensions import ParamSpec # pragma: no cover
 
-    PS = ParamSpec('PS')
+    PS = ParamSpec('PS') # pragma: no cover
 
 
 import warnings
