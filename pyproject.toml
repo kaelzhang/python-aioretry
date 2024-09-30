@@ -36,6 +36,7 @@ dev = [
     "pytest-cov",
     "twine",
     "mypy",
+    "build"
 ]
 
 [tool.setuptools.dynamic]
