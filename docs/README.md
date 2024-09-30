@@ -19,9 +19,6 @@ $ pip install aioretry
 
 ```py
 import asyncio
-from typing import (
-  Tuple
-)
 
 from aioretry import (
     retry,
@@ -33,7 +30,7 @@ from aioretry import (
 # This example shows the usage with python typings
 def retry_policy(info: RetryInfo) -> RetryPolicyStrategy:
     """
-    - It will always retry until succeeded
+    - It will always retry until succeeded: abandon = False
     - If fails for the first time, it will retry immediately,
     - If it fails again,
       aioretry will perform a 100ms delay before the second retry,
