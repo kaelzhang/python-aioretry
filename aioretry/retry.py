@@ -23,7 +23,7 @@ else:
 import warnings
 import inspect
 import asyncio
-from datetime import datetime
+import time
 
 
 class RetryInfo:
@@ -35,13 +35,13 @@ class RetryInfo:
 
     fails: int
     exception: Exception
-    since: datetime
+    since: float
 
     def __init__(
         self,
         fails: int,
         exception: Exception,
-        since: datetime
+        since: float
     ) -> None:
         self.fails = fails
         self.exception = exception
@@ -112,7 +112,7 @@ async def perform(
             return await fn(*args, **kwargs)
         except Exception as fne:
             if info is None:
-                info = RetryInfo(1, fne, datetime.now())
+                info = RetryInfo(1, fne, time.monotonic())
             else:
                 info = info.update(fne)
 

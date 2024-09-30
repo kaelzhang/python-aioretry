@@ -1,8 +1,5 @@
 import pytest
-from datetime import (
-    datetime,
-    timedelta
-)
+from time import monotonic
 
 from aioretry import (
     retry
@@ -92,7 +89,7 @@ async def run_retry(async_after_failture: bool):
             errors.append(
                 (
                     info,
-                    datetime.now()
+                    monotonic()
                 )
             )
 
@@ -101,7 +98,7 @@ async def run_retry(async_after_failture: bool):
             errors.append(
                 (
                     info,
-                    datetime.now()
+                    monotonic()
                 )
             )
 
@@ -114,7 +111,7 @@ async def run_retry(async_after_failture: bool):
 
         raise RuntimeError(f'{length}')
 
-    current = datetime.now()
+    current = monotonic()
 
     assert await run() == 1
 
@@ -137,12 +134,12 @@ async def run_retry(async_after_failture: bool):
 
         if since is None:
             since = info.since
-            assert current < since < current + timedelta(seconds=0.1)
+            assert current < since < current + 0.1
         else:
             assert since == info.since
 
         delay = max(0, (i - 1) * 0.1)
-        delta = (time - current).total_seconds()
+        delta = time - current
 
         assert delay < delta < delay + 0.1
 
