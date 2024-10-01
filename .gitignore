@@ -5,6 +5,7 @@ __pycache__
 /dist
 /.tox
 /.pytest_cache
+/.ruff_cache
 
 # Coverage
 /.nyc_output
