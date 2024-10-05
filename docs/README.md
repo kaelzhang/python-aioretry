@@ -17,7 +17,7 @@ $ pip install aioretry
 
 A [conda-forge recipe](https://github.com/conda-forge/aioretry-feedstock) is also available, so you can also use
 
-```py
+```sh
 conda install -c conda-forge aioretry
 ```
 
