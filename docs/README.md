@@ -15,6 +15,12 @@ Asyncio retry utility for Python 3.7+
 $ pip install aioretry
 ```
 
+A [conda-forge recipe](https://github.com/conda-forge/aioretry-feedstock) is also available, so you can also use
+
+```py
+conda install -c conda-forge aioretry
+```
+
 ## Usage
 
 ```py
