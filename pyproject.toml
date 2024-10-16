@@ -28,7 +28,7 @@ dynamic = ['version']
 dependencies = []
 
 [project.urls]
-"Homepage" = "https://github.com/kaelzhang/python-aioretry"
+Homepage = "https://github.com/kaelzhang/python-aioretry"
 
 [project.optional-dependencies]
 dev = [
@@ -45,6 +45,9 @@ dev = [
 
 [tool.setuptools.dynamic]
 version = {attr = "aioretry.__version__"}
+
+[tool.setuptools.package-data]
+aioretry = ["py.typed"]
 
 [tool.mypy]
 warn_return_any = true
