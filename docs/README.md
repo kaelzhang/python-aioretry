@@ -142,13 +142,21 @@ Returns a wrapped function which accepts the same arguments as `fn` and returns 
 ### RetryPolicy
 
 ```py
-RetryPolicy = Callable[[RetryInfo], Tuple[bool, Union[float, int]]]
+RetryPolicyStrategy = Tuple[bool, int | float]
+RetryPolicy = Callable[[RetryInfo], RetryPolicyStrategy | Awaitable[RetryPolicyStrategy]]
 ```
 
 Retry policy is used to determine what to do next after the `fn` fails to do some certain thing.
 
 ```py
-abandon, delay = retry_policy(info)
+rt = retry_policy(info)
+
+abandon, delay = (
+    # Since 6.2.0, retry_policy could also return an `Awaitable`
+    await rt
+    if inspect.isawaitable(rt)
+    else rt
+)
 ```
 
 - **info** `RetryInfo`

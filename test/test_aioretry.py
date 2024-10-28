@@ -10,6 +10,23 @@ def retry_policy(info):
     return False, (info.fails - 1) * 0.1
 
 
+async def async_retry_policy(info):
+    return retry_policy(info)
+
+
+class AwaitableRetryPolicy:
+    def __init__(self, info):
+        self._info = info
+
+    def __await__(self):
+        yield
+        return retry_policy(self._info)
+
+
+def awaitable_retry_policy(info):
+    return AwaitableRetryPolicy(info)
+
+
 @pytest.mark.asyncio
 async def test_simple():
     async def just_return():
@@ -18,8 +35,30 @@ async def test_simple():
     assert await just_return() == 1
 
     retried = retry(retry_policy)(just_return)
-
     assert await retried() == 1
+
+    retried = retry(async_retry_policy)(just_return)
+    assert await retried() == 1
+
+    retried = retry(awaitable_retry_policy)(just_return)
+    assert await retried() == 1
+
+    class FailOnce:
+        def __init__(self, policy):
+            self._failed = False
+            self._policy = policy
+
+        @retry('_policy')
+        async def run(self):
+            if self._failed:
+                return 1
+
+            self._failed = True
+            raise RuntimeError('fail')
+
+    assert await FailOnce(retry_policy).run() == 1
+    assert await FailOnce(async_retry_policy).run() == 1
+    assert await FailOnce(awaitable_retry_policy).run() == 1
 
 
 @pytest.mark.asyncio

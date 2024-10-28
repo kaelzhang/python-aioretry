@@ -4,7 +4,7 @@ from typing import (
     Tuple,
     Union,
     Callable,
-    Coroutine,
+    Awaitable,
     Optional,
     TypeVar,
 )
@@ -66,8 +66,10 @@ class RetryInfo:
 
 RetryPolicyStrategy = Tuple[bool, Union[int, float]]
 
-RetryPolicy = Callable[[RetryInfo], RetryPolicyStrategy]
-BeforeRetryRT = Optional[Coroutine[None, None, None]]
+RetryPolicyRT = Union[RetryPolicyStrategy, Awaitable[RetryPolicyStrategy]]
+RetryPolicy = Callable[[RetryInfo], RetryPolicyRT]
+
+BeforeRetryRT = Optional[Awaitable[None]]
 BeforeRetry = Callable[[RetryInfo], BeforeRetryRT]
 
 ParamRetryPolicy = Union[RetryPolicy, str]
@@ -80,7 +82,7 @@ T = TypeVar('T', RetryPolicy, BeforeRetry)
 
 # Return type
 RT = TypeVar('RT')
-TargetFunction = Callable[PS, Coroutine[None, None, RT]]
+TargetFunction = Callable[PS, Awaitable[RT]]
 
 
 async def await_coro(coro: BeforeRetryRT) -> None:
@@ -117,7 +119,13 @@ async def perform(
                 info = info.update(fne)
 
             try:
-                abandon, delay = retry_policy(info)
+                retry_policy_rt = retry_policy(info)
+
+                abandon, delay = (
+                    await retry_policy_rt
+                    if inspect.isawaitable(retry_policy_rt)
+                    else retry_policy_rt
+                )
             except Exception as pe:
                 warn('retry_policy', pe)
                 raise pe
