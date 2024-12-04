@@ -43,6 +43,9 @@ dev = [
     "build"
 ]
 
+[tool.setuptools]
+packages = ["aioretry"]
+
 [tool.setuptools.dynamic]
 version = {attr = "aioretry.__version__"}
 
