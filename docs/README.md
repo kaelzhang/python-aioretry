@@ -1,6 +1,7 @@
 [![](https://github.com/kaelzhang/python-aioretry/actions/workflows/python.yml/badge.svg)](https://github.com/kaelzhang/python-aioretry/actions/workflows/python.yml)
 [![](https://codecov.io/gh/kaelzhang/python-aioretry/branch/master/graph/badge.svg)](https://codecov.io/gh/kaelzhang/python-aioretry)
 [![](https://img.shields.io/pypi/v/aioretry.svg)](https://pypi.org/project/aioretry/)
+[![Conda version](https://img.shields.io/conda/vn/conda-forge/aioretry)](https://anaconda.org/conda-forge/aioretry)
 [![](https://img.shields.io/pypi/l/aioretry.svg)](https://github.com/kaelzhang/python-aioretry)
 
 # aioretry
