@@ -76,6 +76,16 @@ asyncio.run(Client().connect())
 
 ```py
 class ClientWithConfigurableRetryPolicy(Client):
+    MAX_RETRIES = 3
+
+    @classmethod
+    def class_retry_policy(cls, info: RetryInfo) -> RetryPolicyStrategy:
+        return info.fails > cls.MAX_RETRIES, info.fails * 0.1
+
+    @staticmethod
+    def static_retry_policy(info: RetryInfo) -> RetryPolicyStrategy:
+        return info.fails > 3, info.fails * 0.1
+
     def __init__(self, max_retries: int = 3):
         self._max_retries = max_retries
 
@@ -89,13 +99,30 @@ class ClientWithConfigurableRetryPolicy(Client):
     async def connect_with_retry_policy_name(self):
         await self._connect()
 
-    # We should also be able to use a method as the retry policy
+    # We could also be able to use a method as the retry policy,
+    # since 6.3.0
     @retry(_retry_policy)
     async def connect_with_method_retry_policy(self):
         await self._connect()
 
+    # We could also use a class method, since 6.3.0
+    @retry(class_retry_policy)
+    async def connect_with_class_retry_policy(self):
+        await self._connect()
 
-asyncio.run(ClientWithConfigurableRetryPolicy(10).connect())
+    # A static method is also allowed, since 6.3.0
+    @retry(static_retry_policy)
+    async def connect_with_static_retry_policy(self):
+        await self._connect()
+
+
+asyncio.run(ClientWithConfigurableRetryPolicy(10).connect_with_retry_policy_name())
+
+asyncio.run(ClientWithConfigurableRetryPolicy(10).connect_with_method_retry_policy())
+
+asyncio.run(ClientWithConfigurableRetryPolicy().connect_with_class_retry_policy())
+
+asyncio.run(ClientWithConfigurableRetryPolicy().connect_with_static_retry_policy())
 ```
 
 ### Register an `before_retry` callback
