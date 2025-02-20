@@ -2,6 +2,7 @@ import sys
 
 from typing import (
     Tuple,
+    Any,
     Union,
     Callable,
     Awaitable,
@@ -147,20 +148,36 @@ async def perform(
 
 def get_method(
     target: Union[T, str],
-    args: Tuple,
+    host: Any,
     name: str,
 ) -> T:
-    if not isinstance(target, str):
-        return target
+    is_target_str = isinstance(target, str)
 
-    if len(args) == 0:
+    if is_target_str and host is None:
         raise RuntimeError(
             f'[aioretry] decorator should be used for instance method if {name} as a str "{target}", which should be fixed'
         )
 
-    self = args[0]
+    if is_target_str:
+        return getattr(host, target)  # type: ignore
 
-    return getattr(self, target)  # type: ignore
+    if host is None:
+        return target
+
+    cls = type(host)
+
+    if (
+        isinstance(target, classmethod)
+        or isinstance(target, staticmethod)
+
+        # Make sure the method is defined in the class
+        or target == getattr(cls, target.__name__, None)
+    ):
+        # Bind the target to the host, which allows that
+        # the `target` could not be a method of the host
+        return target.__get__(host, cls)
+
+    return target
 
 
 def retry(
@@ -184,11 +201,13 @@ def retry(
 
     def wrapper(fn: TargetFunction[PS, RT]) -> TargetFunction[PS, RT]:
         async def wrapped(*args: PS.args, **kwargs: PS.kwargs) -> RT:
+            host = args[0] if len(args) > 0 else None
+
             return await perform(
                 fn,
-                get_method(retry_policy, args, 'retry_policy'),
+                get_method(retry_policy, host, 'retry_policy'),
                 (
-                    get_method(before_retry, args, 'before_retry')
+                    get_method(before_retry, host, 'before_retry')
                     if before_retry is not None
                     else None
                 ),

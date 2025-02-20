@@ -29,19 +29,22 @@ def awaitable_retry_policy(info):
 
 @pytest.mark.asyncio
 async def test_simple():
-    async def just_return():
-        return 1
+    async def just_return(n = 0):
+        return n + 1
 
     assert await just_return() == 1
 
     retried = retry(retry_policy)(just_return)
     assert await retried() == 1
+    assert await retried(1) == 2
 
     retried = retry(async_retry_policy)(just_return)
     assert await retried() == 1
+    assert await retried(1) == 2
 
     retried = retry(awaitable_retry_policy)(just_return)
     assert await retried() == 1
+    assert await retried(1) == 2
 
     class FailOnce:
         def __init__(self, policy):
@@ -59,6 +62,68 @@ async def test_simple():
     assert await FailOnce(retry_policy).run() == 1
     assert await FailOnce(async_retry_policy).run() == 1
     assert await FailOnce(awaitable_retry_policy).run() == 1
+
+
+@pytest.mark.asyncio
+async def test_instance_method():
+    class FailOnce:
+        _failed = False
+        _isclass = True
+
+        def _retry(self, info):
+            if not self._isclass:
+                return True, 0
+
+            return False, (info.fails - 1) * 0.1
+
+        @classmethod
+        def _retry_class(cls, info):
+            if cls is not FailOnce:
+                return True, 0
+
+            return False, (info.fails - 1) * 0.1
+
+        @staticmethod
+        def _retry_static(info):
+            return False, (info.fails - 1) * 0.1
+
+        @retry(_retry)
+        async def run(self):
+            return await self._run()
+
+        @retry('_retry')
+        async def run_str(self):
+            return await self._run()
+
+        @retry(_retry_class)
+        async def run_class(self):
+            return await self._run()
+
+        @retry('_retry_class')
+        async def run_str_class(self):
+            return await self._run()
+
+        @retry(_retry_static)
+        async def run_static(self):
+            return await self._run()
+
+        @retry('_retry_static')
+        async def run_str_static(self):
+            return await self._run()
+
+        async def _run(self):
+            if self._failed:
+                return 1
+
+            self._failed = True
+            raise RuntimeError('fail')
+
+    assert await FailOnce().run() == 1
+    assert await FailOnce().run_str() == 1
+    assert await FailOnce().run_class() == 1
+    assert await FailOnce().run_str_class() == 1
+    assert await FailOnce().run_static() == 1
+    assert await FailOnce().run_str_static() == 1
 
 
 @pytest.mark.asyncio
