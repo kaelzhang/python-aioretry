@@ -86,8 +86,14 @@ class ClientWithConfigurableRetryPolicy(Client):
     # And by using a str as the parameter `retry_policy`,
     # the decorator must be used for instance methods
     @retry('_retry_policy')
-    async def connect(self):
+    async def connect_with_retry_policy_name(self):
         await self._connect()
+
+    # We should also be able to use a method as the retry policy
+    @retry(_retry_policy)
+    async def connect_with_method_retry_policy(self):
+        await self._connect()
+
 
 asyncio.run(ClientWithConfigurableRetryPolicy(10).connect())
 ```
