@@ -151,14 +151,14 @@ def get_method(
     host: Any,
     name: str,
 ) -> T:
-    is_target_str = isinstance(target, str)
+    # mypy is sooooo stupid, we should never assign this to a variable,
+    # or the type inference will be wrong
+    if isinstance(target, str):
+        if host is None:
+            raise RuntimeError(
+                f'[aioretry] decorator should be used for instance method if {name} as a str "{target}", which should be fixed'
+            )
 
-    if is_target_str and host is None:
-        raise RuntimeError(
-            f'[aioretry] decorator should be used for instance method if {name} as a str "{target}", which should be fixed'
-        )
-
-    if is_target_str:
         return getattr(host, target)  # type: ignore
 
     if host is None:
@@ -167,15 +167,18 @@ def get_method(
     cls = type(host)
 
     if (
+        # `target` could be a wrapped classmethod even without
+        # attaching to the class of the current instance (host)
         isinstance(target, classmethod)
+        # similar to classmethod
         or isinstance(target, staticmethod)
 
         # Make sure the method is defined in the class
         or target == getattr(cls, target.__name__, None)
     ):
-        # Bind the target to the host, which allows that
-        # the `target` could not be a method of the host
-        return target.__get__(host, cls)
+        # Bind the target to the host and its class, which allows that
+        # the `target` could be executed in the current class context
+        return target.__get__(host, cls) # type: ignore
 
     return target
 
