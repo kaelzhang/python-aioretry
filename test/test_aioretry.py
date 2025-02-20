@@ -66,9 +66,32 @@ async def test_simple():
 
 @pytest.mark.asyncio
 async def test_instance_method():
+
+    @classmethod
+    def external_class_retry(cls, info):
+        if cls is not FailOnce:
+            return True, 0
+
+        return False, (info.fails - 1) * 0.1
+
+    @staticmethod
+    def external_static_retry(info):
+        return False, (info.fails - 1) * 0.1
+
+
+    def external_retry(info):
+        return False, (info.fails - 1) * 0.1
+
+    def fake_external_retry(_):
+        # which should not be used
+        return True, 0
+
     class FailOnce:
         _failed = False
         _isclass = True
+
+        def __init__(self):
+            self.external_retry = fake_external_retry
 
         def _retry(self, info):
             if not self._isclass:
@@ -111,6 +134,18 @@ async def test_instance_method():
         async def run_str_static(self):
             return await self._run()
 
+        @retry(external_class_retry)
+        async def run_external_class(self):
+            return await self._run()
+
+        @retry(external_static_retry)
+        async def run_external_static(self):
+            return await self._run()
+
+        @retry(external_retry)
+        async def run_external(self):
+            return await self._run()
+
         async def _run(self):
             if self._failed:
                 return 1
@@ -124,6 +159,11 @@ async def test_instance_method():
     assert await FailOnce().run_str_class() == 1
     assert await FailOnce().run_static() == 1
     assert await FailOnce().run_str_static() == 1
+    assert await FailOnce().run_external_class() == 1
+    assert await FailOnce().run_external_static() == 1
+
+    # It should not use the self.external_retry
+    assert await FailOnce().run_external() == 1
 
 
 @pytest.mark.asyncio
